@@ -9,6 +9,7 @@ from django.utils.translation import gettext_lazy as _
 from plugin import InvenTreePlugin
 from plugin.machine.machine_types import LabelPrinterBaseDriver, LabelPrinterMachine
 from report.models import LabelTemplate
+from rest_framework import serializers
 
 from .version import DYMO_PLUGIN_VERSION
 
@@ -27,12 +28,24 @@ class InvenTreeDymo550Plugin(InvenTreePlugin):
     VERSION = DYMO_PLUGIN_VERSION
 
 
+SPEED_GRAPHICS = 'graphics'
+SPEED_TEXT = 'text'
+SPEED_TURBO = 'turbo'
+
 class Dymo550LabelPrinterDriver(LabelPrinterBaseDriver):
     """Label printer driver for Dymo 550 printers."""
 
     DESCRIPTION = "Dymo 550 driver"
     SLUG = "dymo-550-driver"
     NAME = "Dymo 550 Driver"
+
+    class PrintingOptionsSerializer(LabelPrinterBaseDriver.PrintingOptionsSerializer):
+        speed = serializers.ChoiceField(
+            choices=[(SPEED_GRAPHICS, _('Graphics')), (SPEED_TEXT, _('Text')), (SPEED_TURBO, _("Turbo"))],
+            default=SPEED_GRAPHICS,
+            label=_('Print Speed'),
+            help_text=_('Trade print quality for speed')
+        )
 
     def __init__(self, *args, **kwargs):
         self.print_socket: socket.socket | None = None
@@ -54,6 +67,9 @@ class Dymo550LabelPrinterDriver(LabelPrinterBaseDriver):
 
         super().__init__(*args, **kwargs)
 
+    def get_printing_options_serializer(self, request, *args, **kwargs):
+        return self.PrintingOptionsSerializer(*args, **kwargs)
+
     def print_labels(self, machine: LabelPrinterMachine, label: LabelTemplate, items: QuerySet[models.Model], **kwargs):
         """Print labels using a Dymo label printer."""
         printing_options = kwargs.get('printing_options', {})
@@ -63,7 +79,7 @@ class Dymo550LabelPrinterDriver(LabelPrinterBaseDriver):
         try:
             self.wait_for_unlocked()
             self.wait_for_lock()
-            self.start_job()
+            self.start_job(speed=printing_options.get('speed', SPEED_GRAPHICS))
 
             index = 1
             for item in items:
@@ -135,11 +151,11 @@ class Dymo550LabelPrinterDriver(LabelPrinterBaseDriver):
         logger.debug(out.hex())
         self.print_socket.sendall(out)
 
-    def start_job(self):
+    def start_job(self, speed: str = SPEED_GRAPHICS):
         self.send_command("s", 1, 0, 0, 0)  # start job 1 (little-endian order)
         self.send_command("e")  # use default density
-        self.send_command("i")  # use graphicas quality (does not affect resolution)
-        self.send_command("T", 0x10)  # use normal speed
+        self.send_command("i" if speed == SPEED_GRAPHICS else "h")  # Graphics or text mode
+        self.send_command("T", 0x20 if speed == SPEED_TURBO else 0x10)  # High- or normal-speed
         self.send_command("L", 0, 0)  # use chip-based media length
 
     def send_label(self, index, png):
