@@ -14,21 +14,23 @@ structure.
 
 The following printers have been tested:
 
-- DYMO Label Writer 550 Turbo
+- DYMO Label Writer 550 (Turbo)
 - DYMO Label Writer 5XL
 
 ## Connectivity
 
-This driver requires a raw network connection to the printer.
+This driver connects directly to the printers over a network connection.
 
-The easiest way to set this up, is using cups and configure a RAW printer device
-in combination with `xinetd` like described in this [blog
+It may be possible to expose a USB-connected printer as a network using using `xinetd` like as described in this [blog
 post](https://nerdig.es/labelwriter-im-netz-teil1/).
 
 ## Installation
 
 > [!IMPORTANT]
-> This plugin is only compatible with InvenTree>=0.16 because this uses the new label printer driver interface introduced with [inventree/InvenTree#4824](https://github.com/inventree/InvenTree/pull/4824) and was fixed with 0.16 to work inside of workers.
+> This plugin is only compatible with InvenTree>=0.16 because this uses the new
+label printer driver interface introduced with
+[inventree/InvenTree#4824](https://github.com/inventree/InvenTree/pull/4824) and
+was fixed with 0.16 to work inside of workers.
 
 Goto "Admin Center > Plugins > Install Plugin" and enter `inventree-dymo-550-plugin` as the package name.
 
